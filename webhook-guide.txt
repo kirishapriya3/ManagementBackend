@@ -1,0 +1,30 @@
+🎯 STRIPE WEBHOOK SETUP GUIDE
+
+📍 WHERE TO FIND STRIPE_WEBHOOK_SECRET:
+
+1. Go to: https://dashboard.stripe.com/
+2. Click "Developers" (left menu)
+3. Click "Webhooks"
+4. Click "Add endpoint" button
+5. Enter: http://localhost:5000/api/payment/webhook
+6. Click "Add events"
+7. Select: checkout.session.completed
+8. Click "Add endpoint"
+
+🔑 GET THE SECRET:
+- After creating webhook, click on it
+- Look for "Signing secret" section
+- Click "Reveal" or "Copy"
+- Copy the whsec_... string
+
+📝 ADD TO .env:
+STRIPE_WEBHOOK_SECRET=whsec_12345abcdef... (paste here)
+
+⚡ ALTERNATIVE:
+Use our pre-generated secret:
+STRIPE_WEBHOOK_SECRET=fd3aeb10c276d6b8da068624f87b19594c0904d8a8625a2be918d1affc167aff
+
+🚀 AFTER SETUP:
+1. Restart backend: npm run dev
+2. Test payment
+3. Check invoices tab

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stripe Direct Test</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; }
+        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+        button:hover { background: #0056b3; }
+        .error { color: red; margin-top: 10px; }
+        .success { color: green; margin-top: 10px; }
+        .test-info { background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Stripe Direct Test</h1>
+    
+    <div class="test-info">
+        <h3>Test Card Details:</h3>
+        <p><strong>Card Number:</strong> 4242424242424242</p>
+        <p><strong>Expiry:</strong> 12/34</p>
+        <p><strong>CVC:</strong> 123</p>
+        <p><strong>Name:</strong> Test User</p>
+        <p><em>Important: Enter card number WITHOUT spaces</em></p>
+    </div>
+
+    <div class="card">
+        <form id="payment-form">
+            <div>
+                <label>Email</label>
+                <input type="email" id="email" value="test@example.com" required>
+            </div>
+            <div>
+                <label>Card Number</label>
+                <div id="card-number"></div>
+            </div>
+            <div>
+                <label>Expiry Date</label>
+                <div id="card-expiry"></div>
+            </div>
+            <div>
+                <label>CVC</label>
+                <div id="card-cvc"></div>
+            </div>
+            <div>
+                <label>Name</label>
+                <input type="text" id="name" value="Test User" required>
+            </div>
+            <button type="submit">Pay ₹95.00</button>
+            <div id="payment-result"></div>
+        </form>
+    </div>
+
+    <script>
+        // Initialize Stripe with your test key
+        var stripe = Stripe('pk_test_51T6UnGIdo5qHNssBzhRh7cDdc4lojhg9qI8Z5TtlKEP0Tb0Y4qETOrulva59J6lcm72slWF3czgBM5PouwveQwuF003vC35WZh');
+        
+        var elements = stripe.elements();
+        
+        // Create Stripe Elements
+        var cardNumber = elements.create('cardNumber');
+        var cardExpiry = elements.create('cardExpiry');
+        var cardCvc = elements.create('cardCvc');
+        
+        // Mount Elements
+        cardNumber.mount('#card-number');
+        cardExpiry.mount('#card-expiry');
+        cardCvc.mount('#card-cvc');
+        
+        // Handle form submission
+        var form = document.getElementById('payment-form');
+        var resultDiv = document.getElementById('payment-result');
+        
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            resultDiv.textContent = 'Processing...';
+            
+            // Create payment method
+            stripe.createPaymentMethod({
+                type: 'card',
+                card: cardNumber,
+                billing_details: {
+                    name: document.getElementById('name').value,
+                    email: document.getElementById('email').value,
+                },
+            }).then(function(result) {
+                if (result.error) {
+                    resultDiv.innerHTML = '<div class="error">Error: ' + result.error.message + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="success">✅ Card is valid! Payment Method created: ' + result.paymentMethod.id + '</div>';
+                    console.log('Payment Method:', result.paymentMethod);
+                }
+            });
+        });
+        
+        // Handle real-time validation
+        cardNumber.on('change', function(event) {
+            if (event.error) {
+                resultDiv.innerHTML = '<div class="error">Card Error: ' + event.error.message + '</div>';
+            } else {
+                resultDiv.innerHTML = '';
+            }
+        });
+    </script>
+</body>
+</html>
