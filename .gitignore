@@ -163,6 +163,11 @@ coverage/
 # Optional: uploads (if you store files locally)
 uploads/
 
+test-*
+debug-*
+*.html
+*.txt
+
 
 
 
