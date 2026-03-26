@@ -28,9 +28,9 @@ console.log('4. Check webhook logs for invoice creation');
 
 console.log('\n=== Webhook Endpoint ===');
 console.log('Your webhook should be available at:');
-console.log('POST http://localhost:5000/api/payment/webhook');
+console.log('POST https://managementbackend-0njb.onrender.com/api/payment/webhook');
 console.log('\nConfigure this in your Stripe Dashboard:');
 console.log('1. Go to Stripe Dashboard → Webhooks');
-console.log(`2. Add endpoint: http://localhost:5000/api/payment/webhook`);
+console.log(`2. Add endpoint: https://managementbackend-0njb.onrender.com/api/payment/webhook`);
 console.log(`3. Use secret: ${webhookSecret}`);
 console.log('4. Select events: checkout.session.completed');

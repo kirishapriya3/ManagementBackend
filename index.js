@@ -21,7 +21,7 @@ const app = express();
 
 app.use(cors({
 //  origin: "http://localhost:5173",
-origin: "*",
+origin: "https://darling-jelly-524929.netlify.app/register",
 credentials: true
 }));
 
