@@ -10,6 +10,11 @@ const RoomSchema = new mongoose.Schema({
         type:Number,
         required:true
     },
+    floor:{
+        type:Number,
+        required:true,
+        default: 1
+    },
     currentOccupants:[
         {
             type:mongoose.Schema.Types.ObjectId,

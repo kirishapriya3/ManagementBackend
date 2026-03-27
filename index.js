@@ -20,30 +20,30 @@ connectDB();
 const app = express();
 
 app.use(cors({
-//  origin: "http://localhost:5173",
-origin: "https://darling-jelly-524929.netlify.app",
- methods: ["GET", "POST", "PUT", "DELETE"],
-credentials: true
+    origin: "http://localhost:5173",
+    // origin: "https://darling-jelly-524929.netlify.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
 }));
 
 app.use(express.json());
 
-app.use("/api/auth",authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/residents", residentRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/maintenance", maintananceRoutes);
 app.use("/api/billing", billingRoutes);
-app.use("/api/payment",paymentRoutes);
+app.use("/api/payment", paymentRoutes);
 app.use("/api/invoices", invoiceRoutes);
 // app.use("/api/reports", reportRoutes);
 app.use("/api", testRoutes);
 app.use("/api/email", emailRoutes);
 
-app.get("/test", (req, res) => res.json({message: "Server is working"}));
+app.get("/test", (req, res) => res.json({ message: "Server is working" }));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    
+
 });

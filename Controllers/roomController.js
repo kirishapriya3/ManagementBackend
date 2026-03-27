@@ -10,6 +10,9 @@ export const createRoom = async(req,res) => {
             room
         });
     } catch (error) {
+        if (error.code === 11000 && error.keyPattern && error.keyPattern.roomNumber) {
+            return res.status(400).json({message: "A room with this number already exists."});
+        }
         res.status(500).json({message: "Error creating room", error});
     }
 };
@@ -77,17 +80,13 @@ export const getRoomsByFloor = async(req,res) => {
         console.log('=== GET ROOMS BY FLOOR DEBUG ===');
         console.log('Floor parameter:', floor);
         
-        // Find rooms by floor - handle different floor formats
-        let roomQuery = {};
-        if (floor === '1') {
-            roomQuery = { roomNumber: { $regex: '^1' } }; // Rooms 101, 102, etc.
-        } else if (floor === '2') {
-            roomQuery = { roomNumber: { $regex: '^2' } }; // Rooms 201, 202, etc.
-        } else if (floor === '3') {
-            roomQuery = { roomNumber: { $regex: '^3' } }; // Rooms 301, 302, etc.
-        } else {
-            roomQuery = { roomNumber: { $regex: `^${floor}` } };
-        }
+        // Find rooms by floor - handling explicit floor property and legacy prefix formatting
+        let roomQuery = {
+            $or: [
+                { floor: Number(floor) },
+                { roomNumber: { $regex: `^${floor}` } }
+            ]
+        };
         
         console.log('Room query:', roomQuery);
         
