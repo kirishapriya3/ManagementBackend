@@ -137,11 +137,38 @@ export const getAllBills = async (req, res) => {
 
 export const getResidentBills = async (req, res) => {
     try {
-        const bills = await Billing.find({
-            residentId: req.params.residentId
-        }).populate('residentId', 'name email').populate('roomId', 'roomNumber');
+        const residentId = req.params.residentId;
 
-        res.status(200).json(bills);
+        // Get resident details
+        const resident = await User.findById(residentId).select("name email");
+
+        if (!resident) {
+            return res.status(404).json({
+                message: "Resident not found"
+            });
+        }
+
+        // Get bills
+        const bills = await Billing.find({ residentId })
+            .populate('roomId', 'roomNumber')
+            .sort({ createdAt: -1 });
+
+        // Format bills for frontend
+        const formattedBills = bills.map(bill => ({
+            _id: bill._id,
+            type: "Hostel Bill",
+            amount: bill.totalAmount,
+            status: bill.status,
+            dueDate: bill.dueDate,
+            paidDate: bill.paymentHistory?.length > 0
+                ? bill.paymentHistory[bill.paymentHistory.length - 1].paymentDate
+                : null
+        }));
+
+        res.status(200).json({
+            resident,
+            bills: formattedBills
+        });
 
     } catch (error) {
         res.status(500).json({
@@ -200,7 +227,14 @@ export const getAllResidentsBillingStatus = async (req, res) => {
     try {
         console.log("getAllResidentsBillingStatus for admin");
 
-        // Get all bills with resident and room information
+        // Get all residents (role: 'resident') from User collection
+        const allResidents = await User.find({ role: 'resident' })
+            .populate('roomId', 'roomNumber')
+            .select('name email phone roomId');
+        
+        console.log(`Found ${allResidents.length} total residents in User collection`);
+
+        // Get all bills with resident information
         const allBills = await Billing.find({})
             .populate('residentId', 'name email phone')
             .populate('roomId', 'roomNumber')
@@ -212,18 +246,13 @@ export const getAllResidentsBillingStatus = async (req, res) => {
         console.log(`Found ${allBills.length} total bills, ${validBills.length} valid bills with residents`);
 
         // Group bills by resident
-        const residentsMap = new Map();
+        const billingMap = new Map();
 
         validBills.forEach(bill => {
             const residentId = bill.residentId._id.toString();
             
-            if (!residentsMap.has(residentId)) {
-                residentsMap.set(residentId, {
-                    residentId: bill.residentId._id,
-                    name: bill.residentId.name,
-                    email: bill.residentId.email,
-                    phone: bill.residentId.phone,
-                    roomNumber: bill.roomId?.roomNumber || 'N/A',
+            if (!billingMap.has(residentId)) {
+                billingMap.set(residentId, {
                     totalBills: 0,
                     paidBills: 0,
                     unpaidBills: 0,
@@ -234,19 +263,19 @@ export const getAllResidentsBillingStatus = async (req, res) => {
                 });
             }
 
-            const resident = residentsMap.get(residentId);
-            resident.totalBills++;
-            resident.totalAmount += bill.totalAmount;
-            resident.totalPaid += bill.paidAmount;
-            resident.totalDue += (bill.totalAmount - bill.paidAmount);
+            const billing = billingMap.get(residentId);
+            billing.totalBills++;
+            billing.totalAmount += bill.totalAmount;
+            billing.totalPaid += bill.paidAmount;
+            billing.totalDue += (bill.totalAmount - bill.paidAmount);
 
             if (bill.status === 'paid') {
-                resident.paidBills++;
+                billing.paidBills++;
             } else {
-                resident.unpaidBills++;
+                billing.unpaidBills++;
             }
 
-            resident.bills.push({
+            billing.bills.push({
                 id: bill._id,
                 billingPeriod: bill.billingPeriod,
                 totalAmount: bill.totalAmount,
@@ -258,8 +287,28 @@ export const getAllResidentsBillingStatus = async (req, res) => {
             });
         });
 
-        // Convert to array and calculate statistics
-        const residents = Array.from(residentsMap.values());
+        // Create residents array with billing data
+        const residents = allResidents.map(resident => {
+            const residentId = resident._id.toString();
+            const billing = billingMap.get(residentId) || {
+                totalBills: 0,
+                paidBills: 0,
+                unpaidBills: 0,
+                totalAmount: 0,
+                totalPaid: 0,
+                totalDue: 0,
+                bills: []
+            };
+
+            return {
+                residentId: resident._id,
+                name: resident.name,
+                email: resident.email,
+                phone: resident.phone,
+                roomNumber: resident.roomId?.roomNumber || 'N/A',
+                ...billing
+            };
+        });
         
         // Calculate overall statistics
         const stats = {

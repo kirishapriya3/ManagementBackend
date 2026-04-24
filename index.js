@@ -22,7 +22,7 @@ const app = express();
 app.use(cors({
     origin: [
         "http://localhost:5173",
-        "https://darling-jelly-524929.netlify.app"
+        // "https://darling-jelly-524929.netlify.app"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
