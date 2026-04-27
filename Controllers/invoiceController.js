@@ -87,15 +87,44 @@ export const generateInvoicePDF = async (invoiceId) => {
             throw new Error('Invoice not found');
         }
 
-        // Launch Puppeteer
-        const browser = await puppeteer.launch({ headless: true });
-        const page = await browser.newPage();
-
         // Generate HTML content
         const htmlContent = generateInvoiceHTML(invoice);
         
+        console.log('Attempting to generate PDF with Puppeteer...');
+        
+        // Try different Puppeteer configurations for different environments
+        let browser;
+        let launchOptions = {
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-gpu'
+            ]
+        };
+
+        try {
+            // Try launching browser
+            browser = await puppeteer.launch(launchOptions);
+        } catch (launchError) {
+            console.error('Initial Puppeteer launch failed, trying alternative config:', launchError);
+            // Try with minimal options
+            browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+        }
+
+        const page = await browser.newPage();
+        
         // Set content and generate PDF
-        await page.setContent(htmlContent);
+        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+        
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
@@ -104,7 +133,8 @@ export const generateInvoicePDF = async (invoiceId) => {
                 right: '20mm',
                 bottom: '20mm',
                 left: '20mm'
-            }
+            },
+            preferCSSPageSize: true
         });
 
         await browser.close();
@@ -113,11 +143,12 @@ export const generateInvoicePDF = async (invoiceId) => {
         invoice.downloadCount += 1;
         await invoice.save();
 
+        console.log('PDF generated successfully with Puppeteer');
         return pdfBuffer;
 
     } catch (error) {
         console.error('Error generating PDF:', error);
-        throw error;
+        throw new Error('Failed to generate PDF invoice. Please ensure Puppeteer is properly installed and configured.');
     }
 };
 
@@ -200,7 +231,7 @@ export const downloadInvoice = async (req, res) => {
         // Generate PDF
         const pdfBuffer = await generateInvoicePDF(req.params.id);
 
-        // Set headers for download
+        // Set headers for PDF download
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoiceNumber}.pdf"`);
 
