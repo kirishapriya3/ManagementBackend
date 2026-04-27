@@ -3,9 +3,8 @@ import Billing from "../Models/Billing.js";
 import Payment from "../Models/Payment.js";
 import User from "../Models/User.js";
 import Room from "../Models/Room.js";
-import puppeteer from 'puppeteer';
-import path from 'path';
-import fs from 'fs';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 // Create invoice after successful payment
 export const createInvoice = async (paymentData) => {
@@ -87,68 +86,105 @@ export const generateInvoicePDF = async (invoiceId) => {
             throw new Error('Invoice not found');
         }
 
-        // Generate HTML content
-        const htmlContent = generateInvoiceHTML(invoice);
+        console.log('Generating PDF with jsPDF...');
         
-        console.log('Attempting to generate PDF with Puppeteer...');
+        // Create new PDF document
+        const doc = new jsPDF();
         
-        // Try different Puppeteer configurations for different environments
-        let browser;
-        let launchOptions = {
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--disable-gpu'
-            ]
-        };
-
-        try {
-            // Try launching browser
-            browser = await puppeteer.launch(launchOptions);
-        } catch (launchError) {
-            console.error('Initial Puppeteer launch failed, trying alternative config:', launchError);
-            // Try with minimal options
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            });
+        // Set font
+        doc.setFontSize(20);
+        doc.text('INVOICE', 105, 20, { align: 'center' });
+        
+        // Invoice details
+        doc.setFontSize(12);
+        doc.text(`Invoice Number: ${invoice.invoiceNumber}`, 20, 40);
+        doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 20, 50);
+        
+        // Resident information
+        const resident = invoice.residentId;
+        doc.setFontSize(14);
+        doc.text('Bill To:', 20, 70);
+        doc.setFontSize(11);
+        doc.text(`${resident.name}`, 20, 80);
+        doc.text(`${resident.email}`, 20, 90);
+        doc.text(`Room: ${invoice.billId?.roomId?.roomNumber || 'N/A'}`, 20, 100);
+        
+        // Bill details
+        const bill = invoice.billId;
+        doc.setFontSize(14);
+        doc.text('Bill Details:', 20, 120);
+        doc.setFontSize(11);
+        doc.text(`Billing Period: ${bill.billingPeriod?.month} ${bill.billingPeriod?.year}`, 20, 130);
+        doc.text(`Total Amount: ₹${bill.totalAmount}`, 20, 140);
+        doc.text(`Paid Amount: ₹${bill.paidAmount}`, 20, 150);
+        doc.text(`Status: ${bill.status}`, 20, 160);
+        
+        // Payment details
+        const payment = invoice.paymentId;
+        doc.setFontSize(14);
+        doc.text('Payment Details:', 20, 180);
+        doc.setFontSize(11);
+        doc.text(`Payment Method: ${payment.paymentMethod}`, 20, 190);
+        doc.text(`Transaction ID: ${payment.stripePaymentId}`, 20, 200);
+        doc.text(`Payment Date: ${new Date(payment.createdAt).toLocaleDateString()}`, 20, 210);
+        
+        // Table for charges
+        const tableData = [
+            ['Description', 'Amount'],
+            ['Room Rent', `₹${bill.charges?.roomRent || 0}`],
+            ['Mess Charges', `₹${bill.charges?.messCharges || 0}`],
+            ['Electricity', `₹${bill.charges?.electricity || 0}`],
+            ['Water', `₹${bill.charges?.water || 0}`],
+            ['Other Charges', `₹${bill.charges?.other || 0}`]
+        ];
+        
+        // Add extra services if any
+        if (bill.charges?.extraServices > 0) {
+            tableData.push(['Extra Services', `₹${bill.charges.extraServices}`]);
         }
-
-        const page = await browser.newPage();
         
-        // Set content and generate PDF
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+        // Add discounts if any
+        if (bill.charges?.discounts > 0) {
+            tableData.push(['Discounts', `-₹${bill.charges.discounts}`]);
+        }
         
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '20mm',
-                right: '20mm',
-                bottom: '20mm',
-                left: '20mm'
-            },
-            preferCSSPageSize: true
+        // Add late fees if any
+        if (bill.charges?.lateFees > 0) {
+            tableData.push(['Late Fees', `₹${bill.charges.lateFees}`]);
+        }
+        
+        tableData.push(['Total Amount', `₹${bill.totalAmount}`]);
+        
+        // Add table to PDF
+        doc.autoTable({
+            head: [tableData[0]],
+            body: tableData.slice(1),
+            startY: 230,
+            theme: 'grid',
+            styles: { fontSize: 10 },
+            headStyles: { fillColor: [75, 46, 43] },
+            alternateRowStyles: { fillColor: [245, 245, 245] }
         });
-
-        await browser.close();
-
+        
+        // Footer
+        doc.setFontSize(10);
+        doc.text('Thank you for your payment!', 105, 280, { align: 'center' });
+        doc.text('This is a computer-generated invoice and does not require a signature.', 105, 285, { align: 'center' });
+        doc.text('For any queries, please contact: support@hostelmanagement.com', 105, 290, { align: 'center' });
+        
+        // Generate PDF buffer
+        const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+        
         // Update download count
         invoice.downloadCount += 1;
         await invoice.save();
 
-        console.log('PDF generated successfully with Puppeteer');
+        console.log('PDF generated successfully with jsPDF');
         return pdfBuffer;
 
     } catch (error) {
         console.error('Error generating PDF:', error);
-        throw new Error('Failed to generate PDF invoice. Please ensure Puppeteer is properly installed and configured.');
+        throw new Error('Failed to generate PDF invoice. Please try again.');
     }
 };
 
