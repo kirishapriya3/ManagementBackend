@@ -79,6 +79,24 @@ https://managementbackend-0njb.onrender.com
 
 ---
 
+## 🔐 Demo Credentials
+
+You can use the following demo accounts to test the API:
+
+### 👨‍💼 Admin
+- Email: admin@gmail.com
+- Password: admin123
+
+### 🧑 Resident
+- Email: test7@gmail.com
+- Password: 123456
+
+### 🛠️ Staff
+- Email: staff@gmail.com
+- Password: staff123
+
+⚠️ Note: Use these credentials to login via `/api/auth/login` and obtain a JWT token for accessing protected routes.
+
 ## 🔗 API Endpoints (Sample)
 
 | Method | Endpoint           | Description   |
@@ -114,7 +132,7 @@ index.js
 
 ## 👩‍💻 Author
 
-Developed by Kirisha Priya
+Developed by Kirisha 
 
 ---
 
